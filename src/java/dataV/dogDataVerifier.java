@@ -75,6 +75,7 @@ public class dogDataVerifier extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         processRequest(request, response);
     }
 
@@ -89,7 +90,12 @@ public class dogDataVerifier extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
+        Connection conn = getConnection();
+	verifyUserInputsAndUpdateDB(conn, request, response);
+        try {
+	    conn.close();
+	}
+	catch(SQLException e) { }
     }
 
     /**
@@ -101,5 +107,91 @@ public class dogDataVerifier extends HttpServlet {
     public String getServletInfo() {
         return "Short description";
     }// </editor-fold>
+    
+    
+    private void verifyUserInputsAndUpdateDB(Connection conn, HttpServletRequest req, HttpServletResponse res) {
+        String name = req.getParameter("name");
+        
+        if (req.getParameter("id") == null) { // create rather than edit
+	    if(handleCreate(conn, res, name)){
+		sendResponse(req, res, name + " added to the DB.", false);
+            }
+	    else
+		sendResponse(req, res, "Problem saving " + name + " to the DB.", true);
+	}
+	else { // edit rather than create
+	    if (handleEdit(conn, res, req.getParameter("id"), name)){
+		sendResponse(req, res, name + " updated successfully.", false);
+            }
+	    else
+		sendResponse(req, res, "Problem updating " + name, true);
+	}
+        
+        
+    }
+    
+    private boolean handleCreate(Connection conn, HttpServletResponse res, String name) {
+	boolean flag = false;
+	String sql = "INSERT INTO dogsstuff(name) VALUES (?)";
+
+	try {
+	    PreparedStatement pstmt = conn.prepareStatement(sql);
+	    pstmt.setString(1, name);
+	    pstmt.executeUpdate();
+	    flag = true;
+	}
+	catch (SQLException e) { }
+	return flag;
+    }
+    
+    private boolean handleEdit(Connection conn, HttpServletResponse res, String idString, String name) {
+       	boolean flag = false;
+	String sql = "UPDATE dogsstuff SET name = ? where id = ?";
+	
+	try {
+	    int id = Integer.parseInt(idString.trim());
+	    PreparedStatement pstmt = conn.prepareStatement(sql);
+	    pstmt.setString(1, name);
+	    pstmt.setInt(2, id);
+	    pstmt.executeUpdate();
+	    flag = true;
+	}
+	catch (NumberFormatException e) { }
+	catch (SQLException e) { }
+	return flag;
+    }
+    
+    private void sendResponse(HttpServletRequest req, HttpServletResponse res, String msg, boolean error) {
+	try {
+	    HttpSession session = req.getSession();
+	    session.setAttribute("result", msg);
+	    if (error)
+		res.sendRedirect("badDogResult.jsp");
+	    else
+		res.sendRedirect("goodDogResult.jsp");
+	}
+	catch(IOException e) { }
+    }
+    
+    
+    private Connection getConnection() {
+	String uri = "jdbc:postgresql://localhost/Dogs"; 
+	Properties props = setLoginForDB("fred", "secret");
+	Connection conn = null;
+	try {
+	    Class.forName("org.postgresql.Driver"); //*** load the PostreSQL driver
+	    conn = DriverManager.getConnection(uri, props);
+	}
+	catch(ClassNotFoundException e) { }
+	catch(SQLException e) { }
+	return conn;
+    }
+
+    private Properties setLoginForDB(final String uname, final String passwd) {
+	Properties props = new Properties();
+	props.setProperty("user", uname);
+	props.setProperty("password", passwd);
+	return props;
+    }
 
 }
