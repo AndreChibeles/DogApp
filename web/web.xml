@@ -1,0 +1,13 @@
+<?xml version = "1.0" encoding = "ISO-8859-1"?>
+
+<web-app>
+    <display-name>GenericServlet example</display-name>
+    <description>
+      This web app uses a GenericServlet to convert temperates 
+      to Fahrenheit and Centigrade.
+    </description>
+
+    <welcome-file-list>
+      <welcome-file>DogInventario.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>     
